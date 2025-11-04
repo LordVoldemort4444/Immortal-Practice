@@ -45,6 +45,7 @@ function createDefaultState() {
     xp: 0,
     xpToLevel: 20,
     years: 0,
+    days: 0,
     daySeconds: 0,           // 0..DAY_SECONDS
     essence: 0,
     hourglasses: 0,
@@ -79,20 +80,24 @@ function wipe() {
 // ---------- Idle Tick ----------
 function tick() {
   const now = Date.now();
-  const elapsed = Math.max(0, now - S.lastTick) / 1000; // seconds
+  const elapsed = Math.max(0, now - S.lastTick) / 1000;
   S.lastTick = now;
 
-  // Essence gain per sec: base (idle) * dimension multiplier
+  // Passive essence gain
   const gain = S.stats.idle * multForDimension(S.dimensionIndex) * elapsed;
   S.essence += gain;
 
-  // Year progress
+  // Time progression
   S.daySeconds += elapsed;
   while (S.daySeconds >= DAY_SECONDS) {
     S.daySeconds -= DAY_SECONDS;
-    S.years += 1;
-    // Small birthday bonus
-    S.essence += 5 + S.level;
+    S.days = (S.days ?? 0) + 1;   // add in-game day counter
+
+    if (S.days >= 360) {          // every 360 days = 1 year
+      S.days = 0;
+      S.years += 1;
+      S.essence += 5 + S.level;
+    }
   }
 
   renderTop();
@@ -259,10 +264,11 @@ function renderTop() {
   ].join("<br>");
 
   const dayPct = Math.floor((S.daySeconds / DAY_SECONDS) * 100);
-  el.progressSummary.innerHTML = [
-    `Years lived: <b>${S.years}</b>`,
-    `Day progress: <b>${dayPct}%</b> of year`,
-  ].join("<br>");
+el.progressSummary.innerHTML = [
+  `Years lived: <b>${S.years}</b>`,
+  `Day: <b>${S.days}</b> of 360`,
+  `Day progress: <b>${Math.floor((S.daySeconds / DAY_SECONDS) * 100)}%</b>`,
+].join("<br>");
 
   el.resourceSummary.innerHTML = [
     `Essence: <b>${Math.floor(S.essence)}</b>`,

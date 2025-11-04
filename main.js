@@ -107,22 +107,40 @@ setInterval(()=>save(), AUTOSAVE_EVERY_MS);
 
 // ---------- Battles ----------
 function makeEnemy(tier) {
-  // Tier 0..4 roughly maps to dimensions; scale with years and level
-  const scale = 1 + tier * 0.45 + (S.years/400);
-  const base = 1 + S.level * 0.15;
+  // gentler early game; still scales later
+  const inherit = 0.5; // from 0.8 → enemies inherit 50% of your stats
+  const base = 1 + S.level * 0.10; // from 0.15
+  // Tier-0 deliberately easier; years scale slower
+  const scale = (tier === 0 ? 0.75 : 1) + tier * 0.35 + (S.years / 600);
 
-  const enemy = {
+  // Favorable element on Tier-0 half the time
+  const all = ELEMENTS.slice();
+  let eElem;
+  if (tier === 0 && Math.random() < 0.5) {
+    // pick something you're strong against
+    const weakAgainstYou = {
+      Fire: "Ice",
+      Ice: "Electric",
+      Gold: "Fire",
+      Electric: "Gold",
+    };
+    eElem = weakAgainstYou[S.element] ?? all[Math.floor(Math.random()*all.length)];
+  } else {
+    eElem = all[Math.floor(Math.random()*all.length)];
+  }
+
+  return {
     name: [
       "Stray Wisp","Bone Jackal","Frost Vixen","Gilded Turtle",
       "Storm Kite","Miraculous Ape","Divine Sentinel","Void Wyrm"
     ][Math.floor(Math.random()*8)],
-    element: ELEMENTS[Math.floor(Math.random()*ELEMENTS.length)],
-    atk: Math.round((4 + S.stats.atk*0.8) * base * scale),
-    def: Math.round((3 + S.stats.def*0.8) * base * scale),
-    hp:  Math.round((24 + S.stats.hp*0.8) * base * scale),
+    element: eElem,
+    atk: Math.round((4  + S.stats.atk * inherit) * base * scale),
+    def: Math.round((3  + S.stats.def * inherit) * base * scale),
+    hp:  Math.round((24 + S.stats.hp  * inherit) * base * scale),
   };
-  return enemy;
 }
+
 
 function damageCalc(attackerAtk, defenderDef, aEl, dEl) {
   const base = Math.max(1, attackerAtk - Math.floor(defenderDef*0.6));

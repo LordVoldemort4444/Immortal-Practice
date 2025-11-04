@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Immortal Practice (Prototype)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="bar">
+    <h1>Immortal Practice — Idle Prototype</h1>
+    <div class="right">
+      <button id="saveBtn" class="ghost">Save</button>
+      <button id="wipeBtn" class="danger ghost">Wipe</button>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <div class="cols">
+        <div>
+          <h2>Hero</h2>
+          <div id="heroSummary" class="kv"></div>
+          <div class="row">
+            <button id="btnSwitchAnimal">Switch Animal</button>
+            <button id="btnSwitchElement">Switch Element</button>
+          </div>
+        </div>
+        <div>
+          <h2>Progress</h2>
+          <div id="progressSummary" class="kv"></div>
+          <div class="row">
+            <button id="btnUseHourglass">Use Hourglass (Skip 1y)</button>
+          </div>
+        </div>
+        <div>
+          <h2>Resources</h2>
+          <div id="resourceSummary" class="kv"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="tabs">
+      <button data-tab="battle" class="tab active">Battle</button>
+      <button data-tab="upgrades" class="tab">Upgrades</button>
+      <button data-tab="evolve" class="tab">Evolve</button>
+      <button data-tab="codex" class="tab">Codex</button>
+    </section>
+
+    <section id="tab-battle" class="panel tabpanel active">
+      <h2>Battle — Quick Sim</h2>
+      <p>Press battle to simulate a fight vs a scaled enemy. Rewards = Essence + chance of Hourglass.</p>
+      <div class="row">
+        <label>Region/Tier:
+          <select id="battleTier">
+            <option value="0">Animal Plains (easy)</option>
+            <option value="1">Human Frontier</option>
+            <option value="2">Miraculous Peaks</option>
+            <option value="3">Divine Citadel</option>
+            <option value="4">Immortal Void (hard)</option>
+          </select>
+        </label>
+        <button id="btnBattle">Battle!</button>
+      </div>
+      <pre id="battleLog" class="log"></pre>
+    </section>
+
+    <section id="tab-upgrades" class="panel tabpanel">
+      <h2>Upgrades</h2>
+      <div id="upgradeList" class="grid"></div>
+    </section>
+
+    <section id="tab-evolve" class="panel tabpanel">
+      <h2>Evolution</h2>
+      <p>Meet the year + level requirements to ascend. Each evolution grants a permanent multiplier.</p>
+      <div id="evolveInfo" class="kv"></div>
+      <button id="btnEvolve">Evolve (if eligible)</button>
+      <pre id="evolveLog" class="log"></pre>
+    </section>
+
+    <section id="tab-codex" class="panel tabpanel">
+      <h2>Codex</h2>
+      <div class="cols">
+        <div>
+          <h3>Animals</h3>
+          <ul>
+            <li><b>Wolf</b> — Fire (aggressive)</li>
+            <li><b>Fox</b> — Ice (tactical)</li>
+            <li><b>Bear</b> — Gold (defensive)</li>
+            <li><b>Bird</b> — Electric (speed)</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Elements</h3>
+          <ul>
+            <li>Fire ▲ Ice ▽ Gold</li>
+            <li>Ice ▲ Electric ▽ Fire</li>
+            <li>Gold ▲ Fire ▽ Electric</li>
+            <li>Electric ▲ Gold ▽ Ice</li>
+          </ul>
+        </div>
+        <div>
+          <h3>Dimensions</h3>
+          <ol>
+            <li>Animal</li>
+            <li>Human</li>
+            <li>Miraculous</li>
+            <li>God</li>
+            <li>Immortal</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bar footer">
+    <small>Autosaves every 10s • v0.1</small>
+  </footer>
+
+  <script src="main.js"></script>
+</body>
+</html>

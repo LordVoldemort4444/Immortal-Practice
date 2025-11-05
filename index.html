@@ -2,55 +2,61 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>Immortal Practice (Prototype)</title>
+  <title>Immortal Practice — Open World (Modular)</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="style.css" />
+  <!-- Phaser (global) -->
+  <script src="https://cdn.jsdelivr.net/npm/phaser@3/dist/phaser.js"></script>
 </head>
 <body>
+  <!-- Top HUD -->
   <header class="bar">
-    <h1>Immortal Practice — Idle Prototype</h1>
+    <h1>Immortal Practice — Open World</h1>
     <div class="right">
       <button id="saveBtn" class="ghost">Save</button>
       <button id="wipeBtn" class="danger ghost">Wipe</button>
     </div>
   </header>
 
-  <main>
-    <section class="panel">
-      <div class="cols">
-        <div>
-          <h2>Hero</h2>
-          <div id="heroSummary" class="kv"></div>
-          <div class="row">
-            <button id="btnSwitchAnimal">Switch Animal</button>
-            <button id="btnSwitchElement">Switch Element</button>
-          </div>
-        </div>
-        <div>
-          <h2>Progress</h2>
-          <div id="progressSummary" class="kv"></div>
-          <div class="row">
-            <button id="btnUseHourglass">Use Hourglass (Skip 1y)</button>
-          </div>
-        </div>
-        <div>
-          <h2>Resources</h2>
-          <div id="resourceSummary" class="kv"></div>
+  <section class="panel">
+    <div class="cols">
+      <div>
+        <h2>Hero</h2>
+        <div id="heroSummary" class="kv"></div>
+        <div class="row">
+          <button id="btnSwitchAnimal">Switch Animal</button>
+          <button id="btnSwitchElement">Switch Element</button>
         </div>
       </div>
-    </section>
+      <div>
+        <h2>Progress</h2>
+        <div id="progressSummary" class="kv"></div>
+        <div class="row">
+          <button id="btnUseHourglass">Use Hourglass (Skip 1y)</button>
+        </div>
+      </div>
+      <div>
+        <h2>Resources</h2>
+        <div id="resourceSummary" class="kv"></div>
+      </div>
+    </div>
+  </section>
 
-    <section class="tabs">
-      <button data-tab="battle" class="tab active">Battle</button>
-      <button data-tab="upgrades" class="tab">Upgrades</button>
-      <button data-tab="evolve" class="tab">Evolve</button>
-      <button data-tab="codex" class="tab">Codex</button>
-    </section>
+  <!-- Game Canvas Host -->
+  <div id="game-root"></div>
 
-    <section id="tab-battle" class="panel tabpanel active">
-      <h2>Battle — Quick Sim</h2>
-      <p>Press battle to simulate a fight vs a scaled enemy. Rewards = Essence + chance of Hourglass.</p>
-      <div class="row">
+  <!-- Prompt -->
+  <div id="prompt" class="prompt"></div>
+
+  <!-- Overlays / Panels -->
+  <div id="battlePanel" class="overlay hidden">
+    <div class="overlay-inner">
+      <div class="overlay-head">
+        <h2>Battle Arena — Turn Based</h2>
+        <button class="close" data-close="#battlePanel">×</button>
+      </div>
+
+      <div class="row" style="margin-bottom:8px">
         <label>Region/Tier:
           <select id="battleTier">
             <option value="0">Animal Plains (easy)</option>
@@ -60,26 +66,57 @@
             <option value="4">Immortal Void (hard)</option>
           </select>
         </label>
-        <button id="btnBattle">Battle!</button>
+        <button id="btnStartBattle">Start Battle</button>
+        <button id="btnRun" class="ghost">Run</button>
       </div>
-      <pre id="battleLog" class="log"></pre>
-    </section>
 
-    <section id="tab-upgrades" class="panel tabpanel">
-      <h2>Upgrades</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Your Status</h3>
+          <div id="heroStatus" class="kv"></div>
+        </div>
+        <div class="card">
+          <h3>Enemy Status</h3>
+          <div id="enemyStatus" class="kv"></div>
+        </div>
+        <div class="card" style="grid-column:1/-1">
+          <h3>Abilities</h3>
+          <div id="abilityList" class="row" style="flex-wrap:wrap"></div>
+        </div>
+      </div>
+
+      <pre id="battleLog" class="log" style="margin-top:10px"></pre>
+    </div>
+  </div>
+
+  <div id="upgradesPanel" class="overlay hidden">
+    <div class="overlay-inner">
+      <div class="overlay-head">
+        <h2>Dojo of Growth — Upgrades</h2>
+        <button class="close" data-close="#upgradesPanel">×</button>
+      </div>
       <div id="upgradeList" class="grid"></div>
-    </section>
+    </div>
+  </div>
 
-    <section id="tab-evolve" class="panel tabpanel">
-      <h2>Evolution</h2>
-      <p>Meet the year + level requirements to ascend. Each evolution grants a permanent multiplier.</p>
+  <div id="evolvePanel" class="overlay hidden">
+    <div class="overlay-inner">
+      <div class="overlay-head">
+        <h2>Ascension Shrine — Evolve</h2>
+        <button class="close" data-close="#evolvePanel">×</button>
+      </div>
       <div id="evolveInfo" class="kv"></div>
       <button id="btnEvolve">Evolve (if eligible)</button>
       <pre id="evolveLog" class="log"></pre>
-    </section>
+    </div>
+  </div>
 
-    <section id="tab-codex" class="panel tabpanel">
-      <h2>Codex</h2>
+  <div id="codexPanel" class="overlay hidden">
+    <div class="overlay-inner">
+      <div class="overlay-head">
+        <h2>Codex Library</h2>
+        <button class="close" data-close="#codexPanel">×</button>
+      </div>
       <div class="cols">
         <div>
           <h3>Animals</h3>
@@ -110,13 +147,14 @@
           </ol>
         </div>
       </div>
-    </section>
-  </main>
+    </div>
+  </div>
 
   <footer class="bar footer">
-    <small>Autosaves every 10s • v0.1</small>
+    <small>Autosaves every 10s • v0.4 (Open world, modular)</small>
   </footer>
 
-  <script src="main.js"></script>
+  <!-- App entry (ES modules) -->
+  <script type="module" src="js/main.js"></script>
 </body>
 </html>

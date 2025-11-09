@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Lingjie — Tutorial Grove</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="tutorial.css" />
+</head>
+<body>
+  <div id="fade"></div>
+
+  <main id="field" aria-live="polite">
+    <!-- large tree where player woke up -->
+    <div id="tree"></div>
+
+    <!-- quest marker to guide movement -->
+    <div id="marker" class="pulse"></div>
+
+    <!-- player -->
+    <div id="player">
+      <div class="body"></div>
+      <div class="shadow"></div>
+    </div>
+
+    <!-- enemy (revealed after “spotted”) -->
+    <div id="enemy" class="hidden">
+      <div class="dot"></div>
+      <div id="enemyLabel" class="label hidden">Lymph</div>
+    </div>
+
+    <!-- UI overlays -->
+    <section id="ui">
+      <div id="hint">Use <b>W A S D</b> to move.</div>
+      <div id="dialogue" class="hidden">
+        <div id="text"></div>
+        <div id="advance">Click or press <span>Space</span></div>
+      </div>
+    </section>
+  </main>
+
+  <script src="tutorial.js"></script>
+</body>
+</html>

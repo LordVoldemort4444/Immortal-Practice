@@ -1,0 +1,101 @@
+:root{
+  --fg:#ece9e2; --muted:#b9b6af; --accent:#9ad6ff;
+  --bg1:#0b1416; --bg2:#111a14;
+  --panel:rgba(10,10,10,.45); --border:rgba(255,255,255,.08);
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; font-family:"Noto Serif",serif; color:var(--fg);
+  background: radial-gradient(1200px 800px at 50% 10%, var(--bg2), var(--bg1));
+  overflow:hidden;
+}
+
+#fade{
+  position:fixed; inset:0; background:#000; opacity:1; pointer-events:none;
+  animation: fadeIn .6s ease forwards;
+}
+@keyframes fadeIn{ to{ opacity:0 } }
+@keyframes fadeOut{ to{ opacity:1 } }
+
+#field{
+  position:relative; width:100vw; height:100vh;
+  user-select:none;
+}
+
+/* Tree (spawn) */
+#tree{
+  position:absolute; left:50%; top:52%;
+  transform: translate(-50%, -50%);
+  width:180px; height:180px; border-radius:50%;
+  background: radial-gradient(circle at 40% 35%, #355d3b, #1e3b23 60%, #0f2515);
+  box-shadow: 0 30px 80px rgba(0,0,0,.5);
+}
+
+/* Quest marker */
+#marker{
+  position:absolute; left:50%; top:22%;
+  transform: translate(-50%, -50%);
+  width:40px; height:40px; border-radius:50%;
+  border:2px solid rgba(255,255,255,.5);
+  box-shadow: 0 0 30px rgba(154,214,255,.35), inset 0 0 12px rgba(154,214,255,.25);
+}
+.pulse{ animation:pulse 1.6s ease-in-out infinite }
+@keyframes pulse{
+  0%,100%{ transform: translate(-50%, -50%) scale(1) }
+  50%{ transform: translate(-50%, -50%) scale(1.15) }
+}
+
+/* Player */
+#player{
+  position:absolute; left:50%; top:58%;
+  transform: translate(-50%, -50%);
+  width:24px; height:24px;
+}
+#player .body{
+  width:100%; height:100%; border-radius:50%;
+  background: radial-gradient(circle at 35% 30%, #e7fbff, #bfe9ff 60%, #7ec7ff);
+  box-shadow: 0 0 18px rgba(126,199,255,.6);
+}
+#player .shadow{
+  position:absolute; left:50%; bottom:-8px; transform: translateX(-50%);
+  width:26px; height:6px; border-radius:50%; background: rgba(0,0,0,.35); filter: blur(2px);
+}
+
+/* Enemy */
+#enemy{
+  position:absolute; left:50%; top:18%;
+  transform: translate(-50%, -50%);
+  width:24px; height:24px;
+}
+#enemy .dot{
+  width:100%; height:100%; border-radius:50%; background:#0c0c0c;
+  box-shadow: 0 0 16px rgba(0,0,0,.6);
+}
+#enemy .label{
+  position:absolute; left:50%; top:-22px; transform: translate(-50%,-50%);
+  padding:4px 8px; border-radius:12px; font-size:12px;
+  color:#0b0b0b; background:#e9e7e1; white-space:nowrap;
+  box-shadow: 0 6px 16px rgba(0,0,0,.2);
+}
+.hidden{ display:none }
+
+/* UI */
+#ui{
+  position:absolute; left:0; right:0; bottom:0; padding:16px;
+  display:flex; justify-content:space-between; align-items:flex-end;
+}
+#hint{
+  color:var(--muted); font-size:14px;
+}
+#dialogue{
+  margin-left:auto; max-width:min(60ch, 48vw);
+  background: linear-gradient(180deg, var(--panel), rgba(12,12,12,.25));
+  border:1px solid var(--border); border-radius:14px;
+  backdrop-filter: blur(6px);
+  padding:12px 14px; text-align:left;
+}
+#dialogue #text{ min-height:64px; line-height:1.6 }
+#dialogue #advance{ text-align:right; color:var(--muted); font-size:12px }
+#dialogue #advance span{ color:var(--accent) }

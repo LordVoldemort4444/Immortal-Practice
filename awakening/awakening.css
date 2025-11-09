@@ -2,13 +2,15 @@
   --fg:#ebe8e2;
   --muted:#b9b6af;
   --hint:#9ad6ff;
+  --panel: rgba(12,12,12,.45);
+  --border: rgba(255,255,255,.08);
 }
 
 *{box-sizing:border-box}
 html,body{height:100%}
 body{
   margin:0; color:var(--fg); font-family:"Noto Serif", serif; letter-spacing:.2px;
-  overflow:hidden;
+  overflow:hidden; cursor:pointer;
 }
 
 /* shifting background gradient */
@@ -31,9 +33,9 @@ body{
   padding: clamp(16px, 4vw, 40px);
 }
 
-/* Yuanyuan placeholder: glowing orb with a subtle tail */
+/* Yuanyuan placeholder: glowing orb */
 #yuanyuan{
-  position:absolute; top: 30%; left: 50%; transform: translateX(-50%);
+  position:absolute; top: 28%; left: 50%; transform: translateX(-50%);
   width: 84px; height: 84px;
   animation: bob 3.6s ease-in-out infinite;
   pointer-events: none;
@@ -62,11 +64,11 @@ body{
   filter: blur(1px);
 }
 
-/* Dialogue box */
+/* Dialogue panel */
 #dialogue{
   width:min(960px, 90vw);
-  background: linear-gradient(180deg, rgba(12,12,12,.55), rgba(12,12,12,.35));
-  border: 1px solid rgba(255,255,255,.08);
+  background: linear-gradient(180deg, var(--panel), rgba(12,12,12,.32));
+  border: 1px solid var(--border);
   box-shadow: 0 10px 40px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.05);
   border-radius: 16px;
   padding: clamp(14px, 3vw, 22px) clamp(16px, 3.2vw, 28px);
@@ -74,8 +76,8 @@ body{
 }
 
 #text{
-  min-height: 92px;
-  font-size: clamp(16px, 2.2vw, 22px);
+  min-height: 108px;
+  font-size: clamp(16px, 2.1vw, 22px);
   line-height: 1.7;
   opacity:0; transform: translateY(6px);
   transition: opacity .28s ease, transform .28s ease;
@@ -88,9 +90,34 @@ body{
   color: var(--muted);
   font-size: clamp(12px, 1.7vw, 15px);
   text-align:right;
-  opacity:.8;
+  opacity:.85;
 }
 #hint span{ color: var(--hint) }
 
-/* Make the whole screen clickable to advance */
-body { cursor: pointer; }
+.choices{
+  display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;
+}
+.choice{
+  cursor:pointer; user-select:none;
+  color:#0b0b0b; background:#e9e7e1;
+  border:none; border-radius:12px; padding:8px 12px;
+  font-family: inherit; font-size: 15px;
+  box-shadow: 0 6px 16px rgba(0,0,0,.2), inset 0 -2px 0 rgba(0,0,0,.12);
+  transition: transform .08s ease, box-shadow .12s ease;
+}
+.choice:hover{ transform: translateY(-1px) }
+.choice:active{ transform: translateY(0); box-shadow: 0 3px 10px rgba(0,0,0,.18) }
+
+.name-form{
+  display:flex; gap:8px; align-items:center; margin-top:10px;
+}
+.name-form label{ font-size:14px; color:var(--muted) }
+.name-form input{
+  flex:1; border-radius:10px; padding:8px 10px; border:1px solid var(--border);
+  font-family:inherit; font-size:15px; background:rgba(255,255,255,.08); color:var(--fg);
+  outline:none;
+}
+.name-form button{
+  border:none; border-radius:10px; padding:8px 12px; font-size:15px;
+  background:#e9e7e1; color:#0b0b0b; cursor:pointer;
+}

@@ -1,10 +1,8 @@
 // awakening/awakening.js
-// Fixed flow per spec:
-// - Space + Click advance (like prologue), but ignored when form/choices visible
-// - Instant reveal still runs callbacks (so buttons always appear)
-// - Must cover 3 topics: remember, shrine, who
-// - After shrine explanation + name reveal, run 1-on-1 sequence you specified
-// - Then attunement -> result -> exit
+// Space + optional click advance, constant hint in HTML,
+// instant reveal now defers the callback to the *next* advance,
+// choices/form block space/click, must cover three topics,
+// corrected 1-on-1 sequence and gated Shrine/Who lines.
 
 (() => {
   "use strict";
@@ -35,12 +33,13 @@
   let typeTimer = null;
   let currentFull = "";
   let shown = "";
-  let afterCallback = null;
   let introIndex = 0;
   let playerName = "";
   let yuanyuanRevealed = false;
 
-  // topics the player must ask
+  // NEW: defer callbacks after instant reveal
+  let pendingAfter = null;
+
   const asked = { remember: false, shrine: false, who: false };
 
   const introLines = [
@@ -57,15 +56,19 @@
     typing = true;
     currentFull = str;
     shown = "";
-    afterCallback = (typeof done === "function") ? done : null;
+    pendingAfter = (typeof done === "function") ? done : null; // store for later
     elText.classList.add("show");
     elText.textContent = "";
     let i = 0;
     (function step(){
       if (i >= str.length){
         typing = false;
-        const cb = afterCallback; afterCallback = null;
-        if (cb) cb();
+        // If user *didn't* instant reveal, run callback now
+        if (pendingAfter){
+          const cb = pendingAfter;
+          pendingAfter = null;
+          cb();
+        }
         return;
       }
       shown += str[i++];
@@ -79,8 +82,16 @@
     clearTimer();
     typing = false;
     elText.textContent = currentFull;
-    const cb = afterCallback; afterCallback = null;
-    if (cb) cb();
+    // IMPORTANT: do NOT run the callback now.
+    // Leave pendingAfter set; it will run on the *next* advance.
+    return true;
+  }
+
+  function runPendingIfAny(){
+    if (!pendingAfter) return false;
+    const cb = pendingAfter;
+    pendingAfter = null;
+    cb();
     return true;
   }
 
@@ -107,7 +118,8 @@
   }
 
   function advanceIntro(){
-    if (instantReveal()) return;
+    if (instantReveal()) return;          // first press: reveal
+    if (runPendingIfAny()) return;        // second press: run after
     introIndex++;
     if (introIndex < introLines.length){
       elText.classList.remove("show");
@@ -152,12 +164,12 @@
 
       case "shrine":
         asked.shrine = true;
-        explainShrineThenOfferRemaining(); // Shrine line prints ONLY here
+        explainShrineThenOfferRemaining();
         break;
 
       case "who":
         asked.who = true;
-        revealYuanyuan(offerRemainingChoices); // Name reveal, then only show remaining buttons
+        revealYuanyuan(offerRemainingChoices);
         break;
 
       case "replyOneOnOne":
@@ -170,14 +182,12 @@
     }
   }
 
-  // After "...I don't remember."
   function lineDanger(){
     typeText("\"You don't remember? This place is very dangerous, it's very close to the Shrine, tightly guarded by the Void.\"", ()=>{
-      offerRemainingChoices(); // Do NOT auto print Shrine line; require the button
+      offerRemainingChoices();
     });
   }
 
-  // Just shows the remaining question buttons (no NPC line)
   function offerRemainingChoices(){
     if (allCovered()){ startOneOnOne(); return; }
     const opts = [];
@@ -186,7 +196,6 @@
     setChoices(opts);
   }
 
-  // Print Shrine explanation then return to remaining buttons (or 1-on-1 if both done)
   function explainShrineThenOfferRemaining(){
     typeText("\"The Shrine is where the Void gathers strength. We shouldn't stay—this path isn't safe.\"", ()=>{
       offerRemainingChoices();
@@ -202,28 +211,24 @@
 
   function allCovered(){ return asked.remember && asked.shrine && asked.who; }
 
-  // ---------- Your specified 1-on-1 sequence ----------
+  // ---------- 1-on-1 Sequence ----------
   function startOneOnOne(){
     state = "oneOnOne";
-    // 1) Yuanyuan asks
     typeText("\"You don't know about the Shrine? Do you even live here? Have you ever heard of the Void?\"", ()=>{
-      // 2) Player single reply button
       setChoices([{ text: "\"I somehow know a little bit, but I don't really know why I am here.\"", key: "replyOneOnOne" }]);
     });
   }
 
   function oneOnOne_ThatStrange(){
     elChoices.innerHTML = "";
-    // 3) Yuanyuan replies
     typeText("\"That's strange. But it's okay, if you're just a traveller, why don't I help you navigate this place? I've been here for quite some time. But let us get out of this place first!\"", ()=>{
-      // Continue to attunement
       beginAttuneLead();
     });
   }
 
   function proceedIfAllCovered(){
     if (!allCovered()){ offerRemainingChoices(); return; }
-    startOneOnOne(); // funnel into the 1-on-1 sequence
+    startOneOnOne();
   }
 
   // ---------- Attunement & Result ----------
@@ -231,7 +236,6 @@
     state = "attuneLead";
     typeText("\"Your Qi is still forming. Let me attune you to the flow of Lingjie...\"\n\n(Resonance stirring...)", ()=>{
       state = "result";
-      // Space/click -> showResult
     });
   }
 
@@ -265,28 +269,33 @@
     lastKey = now;
 
     if (!canAdvanceByKeyOrClick()) return;
+
+    // First try to reveal; if not revealing, try to run pending callback; else advance state.
     if (instantReveal()) return;
+    if (runPendingIfAny()) return;
 
     switch(state){
       case "intro":       advanceIntro(); break;
-      case "name":        /* ignore Space; use form */ break;
+      case "name":        /* ignore; submit form */ break;
       case "dialogue":    /* buttons only */ break;
       case "oneOnOne":    /* buttons only */ break;
-      case "attuneLead":  /* wait; state will flip to 'result' */ break;
+      case "attuneLead":  /* wait; will switch to 'result' after typing */ break;
       case "result":      showResult(); break;
       case "exit":        exitScene(); break;
     }
   });
 
-  // Click (like prologue), guarded when form/choices visible
+  // Click (like prologue). Ignored when form/choices visible.
   window.addEventListener("click", (e)=>{
     if (e.target.closest(".name-form") || e.target.closest(".choice")) return;
     if (!canAdvanceByKeyOrClick()) return;
+
     if (instantReveal()) return;
+    if (runPendingIfAny()) return;
 
     switch(state){
       case "intro":       advanceIntro(); break;
-      case "name":        /* ignore click */ break;
+      case "name":        /* ignore */ break;
       case "dialogue":    /* buttons only */ break;
       case "oneOnOne":    /* buttons only */ break;
       case "attuneLead":  /* wait */ break;

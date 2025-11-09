@@ -239,19 +239,29 @@
     });
   }
 
-  function showResult(){
-    const element = ELEMENTS[Math.floor(Math.random()*ELEMENTS.length)];
-    const animal  = ANIMALS[Math.floor(Math.random()*ANIMALS.length)];
-    if (ELEMENT_BG[element]) elBg.style.background = ELEMENT_BG[element];
+function showResult(){
+  const element = ELEMENTS[Math.floor(Math.random()*ELEMENTS.length)];
+  const animal  = ANIMALS[Math.floor(Math.random()*ANIMALS.length)];
 
-    typeText("-- Resonance stirs through the leaves and stone. --\n\nYou are now a " + element + " " + animal + ".", ()=>{
-      state = "exit";
-    });
-  }
+  // Save for the tutorial scene
+  try {
+    localStorage.setItem("ip.element", element);
+    localStorage.setItem("ip.animal", animal);
+  } catch(e){ /* ignore private-mode errors */ }
 
-  function exitScene(){
-    window.location.href = "../index.html";
-  }
+  if (ELEMENT_BG[element]) elBg.style.background = ELEMENT_BG[element];
+
+  typeText("-- Resonance stirs through the leaves and stone. --\n\nYou are now a " + element + " " + animal + ".", ()=>{
+    state = "exit";
+  });
+}
+
+
+function exitScene(){
+  // go to the new tutorial scene (not index.html)
+  window.location.href = "../tutorial/tutorial.html";
+}
+
 
   // ---------- Input (Space + guarded click) ----------
   function canAdvanceByKeyOrClick(){

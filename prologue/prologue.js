@@ -1,26 +1,25 @@
-/* Prologue: typewriter + space-to-advance
-   - Space reveals full current paragraph or advances to next
-   - Ends by navigating to Awakening scene (Yuanyuan dialogue)
+/* Prologue: exact wording, typewriter, Space/Click advance.
+   Ends by navigating to Awakening scene.
 */
 
 const slides = [
-`Once upon a time, **Lingjie** was roamed by beasts and creatures wandering the wilds.`,
-`After the birth of **Qi**, the essence that sustains all life, all beings learned to draw from the five elements — **Wood, Fire, Earth, Metal, and Water** — to extend their years.`,
-`For centuries, animals and humans lived in harmony, cultivating toward transcendence into higher realms.`,
-`One day, a mysterious being mastered all elements and ascended beyond mortality.
-Taking the form of a **Dragon**, he became known as the **Immortal Dragon**.`,
-`With his divine gift, he granted the creatures of Lingjie the ability to transcend — to awaken and become more than they were.`,
-`From among the awakened, he chose **Gods**, guardians who governed Lingjie in balance and peace.`,
-`But then came the **Void** — monstrous beings who envied life.
-They coveted transformation and whispered to hearts not yet ready.`,
-`Through deceit, the Dragon’s own subjects turned against him.
-They trapped him and bound him in corrupted chains.`,
-`In one final act of defiance, the Dragon shattered his pure soul across Lingjie.
-When his light faded, the world fell silent.`,
-`Transcendence was forbidden.
-Humans and beasts withered.
-Civilizations crumbled into ruins.
-Only the faint memory of the Dragon’s breath remained.`
+  // EXACT WORDING FROM YOUR SCRIPT — split into readable slides, no edits.
+  `Once upon a time, Lingjie is roamed with beasts and animals that wander around the wild.`,
+  `After the exposure of Qi, the very essence that sustains life form, creatures begin to realize by absorbing the powers of the five major elementals of the world, Wood, Fire, Earth, Metal and Water, they can extend their lives.`,
+  `For centuries, animals and humans live a fruitful life, striving to transcend to the Immortal Realm.`,
+  `One day, a mysterious creature mastered the elemental powers and was said to become Immortal.`,
+  `By using his powers, he took on the form of a Dragon, and granted all beasts and animals of Lingjie the ability to transcend to humans and is known as the Immortal Dragon.`,
+  `The Immortal Dragon carefully selected his subjects to serve as his Gods, governing Lingjie in a harmonious manner.`,
+  `But then came the Void, monstrous and devilish creatures that seek to transform into human.`,
+  `They become envious of other animals of Lingjie.`,
+  `With the ability of corrupting hearts, the Dragon’s subjects are turned against him.`,
+  `When he realized the change, it was already too late.`,
+  `They misused his trust, lured him into a trap, and chained the Immortal Dragon.`,
+  `Using the power of the Void, they corrupted his heart in an attempt to use his power to transcend their own creatures.`,
+  `In a desperate attempt, the clean soul of the Immortal Dragon scattered himself over Lingjie, and the civilization of Lingjie immediately crumbled.`,
+  `The power of animals to transcend is prohibited, humans and plants withered, civilizations crumbled with ruins remained.`,
+  `The lands become corrupted, roamed by Void creatures.`,
+  `Only the faint memories of the Dragon’s breath remain.`
 ];
 
 const elText = document.getElementById('text');
@@ -28,74 +27,51 @@ const elHint = document.getElementById('hint');
 
 let idx = 0;
 let typing = false;
-let charTimer = null;
-let revealIndex = 0;
+let t = null;
 
-function plain(s){ return s.replace(/\*\*/g,''); }
-
-function typeSlide(text){
+function typeLine(s, speed=32){
   typing = true;
-  revealIndex = 0;
-  elText.textContent = '';
   elText.classList.add('show');
-  elHint.classList.remove('visible');
-
-  const content = plain(text);
-  const step = () => {
-    if(revealIndex >= content.length){
-      typing = false;
-      setTimeout(()=> elHint.classList.add('visible'), 120);
-      return;
-    }
-    elText.textContent += content[revealIndex++];
-    charTimer = setTimeout(step, 34);
-  };
-  step();
+  elText.textContent = '';
+  let i = 0;
+  (function step(){
+    if(i >= s.length){ typing = false; return; }
+    elText.textContent += s[i++];
+    t = setTimeout(step, speed);
+  })();
 }
 
-function revealAllNow(){
+function finishNow(){
   if(!typing) return;
-  clearTimeout(charTimer);
-  elText.textContent = plain(slides[idx]);
+  clearTimeout(t);
   typing = false;
-  elHint.classList.add('visible');
+  elText.textContent = slides[idx];
 }
 
-function nextSlide(){
-  if(typing){
-    revealAllNow();
-    return;
-  }
-  elText.classList.remove('show');
-  elHint.classList.remove('visible');
+function next(){
+  if(typing){ finishNow(); return; }
 
-  setTimeout(()=>{
-    idx++;
-    if(idx < slides.length){
-      typeSlide(slides[idx]);
-    }else{
-      endPrologue();
-    }
-  }, 80);
-}
-
-function endPrologue(){
-  // Transition straight into Awakening scene
-  window.location.href = '../awakening/awakening.html';
-}
-
-function keyHandler(e){
-  if(e.code === 'Space'){
-    e.preventDefault();
-    nextSlide();
+  // advance slide
+  idx++;
+  if(idx < slides.length){
+    elText.classList.remove('show');
+    setTimeout(()=> typeLine(slides[idx]), 80);
+  }else{
+    // go to Awakening scene
+    window.location.href = '../awakening/awakening.html';
   }
 }
-function clickHandler(){ nextSlide(); }
 
-typeSlide(slides[0]);
-window.addEventListener('keydown', keyHandler);
-window.addEventListener('click', clickHandler);
+function kick(){
+  typeLine(slides[0]);
+}
 
-window.onkeydown = (e) => {
-  if(e.code === 'Space' && e.target === document.body){ e.preventDefault(); }
-};
+window.addEventListener('keydown', (e)=>{
+  if(e.code==='Space'){ e.preventDefault(); next(); }
+});
+window.addEventListener('click', ()=> next());
+
+// prevent space scroll
+window.onkeydown = (e)=>{ if(e.code==='Space' && e.target===document.body) e.preventDefault(); };
+
+kick();

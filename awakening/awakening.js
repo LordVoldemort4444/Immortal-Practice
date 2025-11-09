@@ -1,38 +1,21 @@
 // awakening/awakening.js
-// Clean state-machine implementation of the Awakening scene.
-// - Click OR Space to advance
-// - Typewriter effect with instant reveal on advance
-// - Player name capture
-// - Dialogue choices (including "Who are you?" -> reveals Yuanyuan / 源緣)
-// - Randomize Element + Animal -> show result
-// - One more advance returns to main (index.html)
+// Clean version: ensures the player hears Yuanyuan's name and explores all dialogue topics before progressing.
 
 (() => {
   "use strict";
 
-  // ------------------------------
-  // Config
-  // ------------------------------
-  const TYPE_SPEED_MS = 28; // per-character typing speed
+  const TYPE_SPEED = 28;
   const ELEMENTS = ["Wood", "Fire", "Earth", "Metal", "Water"];
   const ANIMALS = ["Wolf", "Fox", "Bear", "Bird", "Serpent"];
-
   const ELEMENT_BG = {
-    Wood:
-      "linear-gradient(120deg,#0f1f12,#132516,#0f1f12)",
-    Fire:
-      "linear-gradient(120deg,#2a0e0e,#3a1310,#2a0e0e)",
-    Earth:
-      "linear-gradient(120deg,#19160e,#241f12,#19160e)",
-    Metal:
-      "linear-gradient(120deg,#0e1419,#121b24,#0e1419)",
-    Water:
-      "linear-gradient(120deg,#0b1621,#0f1d2b,#0b1621)",
+    Wood: "linear-gradient(120deg,#0f1f12,#132516,#0f1f12)",
+    Fire: "linear-gradient(120deg,#2a0e0e,#3a1310,#2a0e0e)",
+    Earth: "linear-gradient(120deg,#19160e,#241f12,#19160e)",
+    Metal: "linear-gradient(120deg,#0e1419,#121b24,#0e1419)",
+    Water: "linear-gradient(120deg,#0b1621,#0f1d2b,#0b1621)"
   };
 
-  // ------------------------------
   // DOM
-  // ------------------------------
   const elText = document.getElementById("text");
   const elChoices = document.getElementById("choices");
   const elHint = document.getElementById("hint");
@@ -40,173 +23,87 @@
   const elInput = document.getElementById("playerName");
   const elBg = document.getElementById("bg");
 
-  // ------------------------------
-  // Scene Script
-  // ------------------------------
+  // State
+  let state = "intro";
+  let typing = false;
+  let typeTimer = null;
+  let currentText = "";
+  let introIndex = 0;
+  let playerName = "";
+  let yuanyuanRevealed = false;
+
+  // Which topics player has asked
+  const asked = {
+    shrine: false,
+    who: false,
+    remember: false
+  };
+
   const introLines = [
     "-- The world is quiet. Leaves whisper overhead. --",
     "A soft light hovers nearby.",
-    "\"Are you alive? Are you awake?\"",
+    "\"Are you alive? Are you awake?\""
   ];
 
-  // Conversation graph
-  // npc: line to type
-  // choices: array of {text, next} where next can be:
-  //   - number index into convo[]
-  //   - 'who' to reveal Yuanyuan
-  //   - 'randomize' to start attunement
-  const convo = [
-    {
-      // 0
-      npc: "\"Why are you here, sleeping under the tree?\"",
-      choices: [{ text: "\"...I don't remember.\"", next: 1 }],
-    },
-    {
-      // 1
-      npc:
-        "\"You don't remember? This place is very dangerous, it's very close to the Shrine, tightly guarded by the Void.\"",
-      choices: [
-        { text: "\"...(Looks puzzled)\"", next: 2 },
-        { text: "\"What Shrine? What's the Void?\"", next: 3 },
-        { text: "\"Who are you?\"", next: "who" },
-      ],
-    },
-    {
-      // 2
-      npc:
-        "\"You don't know about the Shrine? Do you even live here? Have you ever heard of the Void?\"",
-      choices: [
-        {
-          text:
-            "\"I somehow know a little bit, but I don't really know why I am here.\"",
-          next: 4,
-        },
-        { text: "\"Who are you?\"", next: "who" },
-      ],
-    },
-    {
-      // 3
-      npc:
-        "\"The Shrine is where the Void gathers strength. We shouldn't stay—this path isn't safe.\"",
-      choices: [
-        { text: "\"Then... please guide me.\"", next: 4 },
-        { text: "\"Who are you?\"", next: "who" },
-      ],
-    },
-    {
-      // 4
-      npc:
-        "\"That's strange. But it's okay—if you're just a traveller, why don't I help you navigate this place? I've been here for quite some time. But let us get out of this place first!\"",
-      choices: [{ text: "\"Alright.\"", next: "randomize" }],
-    },
-  ];
-
-  // ------------------------------
-  // State
-  // ------------------------------
-  // states: 'intro' -> 'name' -> 'dialogue' -> 'randomize' -> 'result' -> 'exit'
-  let state = "intro";
-  let introIdx = 0;
-  let typing = false;
-  let typeTimer = null;
-  let currentTextFull = "";
-  let currentTextShown = "";
-  let playerName = "";
-
-  // ------------------------------
-  // Utilities
-  // ------------------------------
+  // Utils
   function clearTimer() {
-    if (typeTimer) {
-      clearTimeout(typeTimer);
-      typeTimer = null;
-    }
+    if (typeTimer) clearTimeout(typeTimer);
+    typeTimer = null;
   }
 
-  function isInputActive() {
-    return document.activeElement === elInput || elForm.style.display !== "none";
-  }
-
-  function setChoices(list) {
-    elChoices.innerHTML = "";
-    list.forEach((opt) => {
-      const b = document.createElement("button");
-      b.className = "choice";
-      b.type = "button";
-      b.textContent = opt.text;
-      b.addEventListener("click", (e) => {
-        e.stopPropagation();
-        handleChoice(opt.next);
-      });
-      elChoices.appendChild(b);
-    });
-  }
-
-  function typeText(str, speed = TYPE_SPEED_MS, done) {
+  function typeText(str, cb) {
     clearTimer();
     typing = true;
-    currentTextFull = str;
-    currentTextShown = "";
+    currentText = "";
     elText.classList.add("show");
     elText.textContent = "";
 
     let i = 0;
-    (function loop() {
+    (function step() {
       if (i >= str.length) {
         typing = false;
-        if (typeof done === "function") done();
+        if (cb) cb();
         return;
       }
-      currentTextShown += str[i++];
-      elText.textContent = currentTextShown;
-      typeTimer = setTimeout(loop, speed);
+      currentText += str[i++];
+      elText.textContent = currentText;
+      typeTimer = setTimeout(step, TYPE_SPEED);
     })();
   }
 
-  function instantReveal() {
+  function finishTyping() {
     if (!typing) return false;
     clearTimer();
     typing = false;
-    elText.textContent = currentTextFull;
+    elText.textContent = currentText;
     return true;
-    }
+  }
 
   function setHint(html) {
     elHint.innerHTML = html;
   }
 
-  // ------------------------------
-  // Scene Flow
-  // ------------------------------
-  function startIntro() {
-    state = "intro";
-    introIdx = 0;
-    setHint('Click anywhere or press <span>Space</span> to continue');
-    showIntroLine();
-  }
-
+  // Intro
   function showIntroLine() {
-    typeText(introLines[introIdx]);
+    typeText(introLines[introIndex]);
   }
 
   function advanceIntro() {
-    if (instantReveal()) return;
-
-    introIdx++;
-    if (introIdx < introLines.length) {
+    if (finishTyping()) return;
+    introIndex++;
+    if (introIndex < introLines.length) {
       elText.classList.remove("show");
-      setTimeout(showIntroLine, 80);
+      setTimeout(showIntroLine, 100);
     } else {
       state = "name";
       setHint("Type your name below");
-      showNameForm();
+      askName();
     }
   }
 
-  function showNameForm() {
-    typeText('"What\'s your name?"', undefined, () => {
+  function askName() {
+    typeText("\"What's your name?\"", () => {
       elForm.style.display = "flex";
-      elInput.value = "";
       elInput.focus();
     });
   }
@@ -216,128 +113,179 @@
     const val = (elInput.value || "").trim();
     playerName = val || "Traveller";
     elForm.style.display = "none";
-    startDialogue(0);
+    startDialogue();
   });
 
-  function startDialogue(nodeIndex) {
+  // Dialogue
+  function startDialogue() {
     state = "dialogue";
-    showNode(nodeIndex);
+    firstQuestion();
   }
 
-  function showNode(index) {
-    const step = convo[index];
-    if (!step) return;
-    elChoices.innerHTML = "";
-    typeText(step.npc, undefined, () => setChoices(step.choices));
-  }
-
-  function handleChoice(next) {
-    if (next === "who") {
-      revealYuanyuan();
-      return;
-    }
-    if (next === "randomize") {
-      beginRandomize();
-      return;
-    }
-    if (typeof next === "number") {
-      showNode(next);
-    }
-  }
-
-  function revealYuanyuan() {
-    elChoices.innerHTML = "";
-    const line =
-      '"...Oh—right. I haven\'t introduced myself.\nThey call me Yuanyuan... 源緣."';
-    typeText(line, undefined, () => {
-      const safeNode = 3;
-      showNode(safeNode);
+  function firstQuestion() {
+    typeText("\"Why are you here, sleeping under the tree?\"", () => {
+      setChoices([
+        { text: "\"...I don't remember.\"", key: "remember" }
+      ]);
     });
   }
 
+  function setChoices(list) {
+    elChoices.innerHTML = "";
+    list.forEach((opt) => {
+      const b = document.createElement("button");
+      b.className = "choice";
+      b.textContent = opt.text;
+      b.onclick = (e) => {
+        e.stopPropagation();
+        handleChoice(opt.key);
+      };
+      elChoices.appendChild(b);
+    });
+  }
+
+  function handleChoice(key) {
+    elChoices.innerHTML = "";
+    if (key === "remember") {
+      asked.remember = true;
+      talkAboutShrine();
+    } else if (key === "shrine") {
+      asked.shrine = true;
+      talkAboutWho();
+    } else if (key === "who") {
+      asked.who = true;
+      revealYuanyuan(() => {
+        talkAboutWho(); // returns to dialogue after reveal
+      });
+    } else if (key === "continue") {
+      checkAllTopics();
+    }
+  }
+
+  function talkAboutShrine() {
+    typeText("\"You don't remember? This place is very dangerous, it's very close to the Shrine, tightly guarded by the Void.\"", () => {
+      setChoices([
+        { text: "\"What Shrine? What's the Void?\"", key: "shrine" },
+        { text: "\"Who are you?\"", key: "who" }
+      ]);
+    });
+  }
+
+  function talkAboutWho() {
+    // check if all have been asked
+    if (asked.shrine && asked.who && asked.remember) {
+      readyToLeave();
+    } else {
+      typeText("\"The Shrine is where the Void gathers strength. We shouldn't stay—this path isn't safe.\"", () => {
+        // show any remaining options
+        const opts = [];
+        if (!asked.who) opts.push({ text: "\"Who are you?\"", key: "who" });
+        if (!asked.shrine) opts.push({ text: "\"What Shrine? What's the Void?\"", key: "shrine" });
+        if (!asked.remember) opts.push({ text: "\"...I don't remember.\"", key: "remember" });
+        if (opts.length === 0) opts.push({ text: "\"Let's get out of here.\"", key: "continue" });
+        setChoices(opts);
+      });
+    }
+  }
+
+  function revealYuanyuan(cb) {
+    yuanyuanRevealed = true;
+    typeText("\"...Oh—right. I haven't introduced myself. They call me Yuanyuan... 源緣.\"", () => {
+      if (cb) cb();
+    });
+  }
+
+  function readyToLeave() {
+    if (!yuanyuanRevealed) {
+      // auto reveal before leaving
+      revealYuanyuan(() => {
+        afterRevealContinue();
+      });
+    } else {
+      afterRevealContinue();
+    }
+  }
+
+  function afterRevealContinue() {
+    typeText("\"That's strange. But it's okay—if you're just a traveller, why don't I help you navigate this place? I've been here for quite some time. But let us get out of this place first!\"", () => {
+      setChoices([{ text: "\"Alright.\"", key: "continue" }]);
+      // repurpose "continue" to go randomize
+      asked.shrine = asked.who = asked.remember = true; // ensure complete
+    });
+  }
+
+  function checkAllTopics() {
+    elChoices.innerHTML = "";
+    beginRandomize();
+  }
+
+  // Randomization
   function beginRandomize() {
     state = "randomize";
-    elChoices.innerHTML = "";
     setHint('Click anywhere or press <span>Space</span> to continue');
 
-    const attuneLine =
-      '"Your Qi is still forming. Let me attune you to the flow of Lingjie..."\n\n(Resonance stirring...)';
-    typeText(attuneLine, undefined, () => {
+    const line = "\"Your Qi is still forming. Let me attune you to the flow of Lingjie...\"\n\n(Resonance stirring...)";
+    typeText(line, () => {
       state = "result";
     });
   }
 
-  function showRandomizeResult() {
-    const element =
-      ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)];
-    const animal =
-      ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
+  function showResult() {
+    const element = ELEMENTS[Math.floor(Math.random() * ELEMENTS.length)];
+    const animal = ANIMALS[Math.floor(Math.random() * ANIMALS.length)];
 
     if (ELEMENT_BG[element]) elBg.style.background = ELEMENT_BG[element];
 
-    const result =
-      "-- Resonance stirs through the leaves and stone. --\n\n" +
-      "You are now a " + element + " " + animal + ".";
-    typeText(result, undefined, () => {
-      state = "exit";
+    const msg = "-- Resonance stirs through the leaves and stone. --\n\nYou are now a " + element + " " + animal + ".";
+    typeText(msg, () => {
       setHint('Click anywhere or press <span>Space</span> to continue');
+      state = "exit";
     });
   }
 
-  function exitToMain() {
+  function exitScene() {
     window.location.href = "../index.html";
   }
 
-  // ------------------------------
-  // Input Handling
-  // ------------------------------
+  // Controls
   function handleAdvance() {
-    if (instantReveal()) return;
+    if (finishTyping()) return;
 
     switch (state) {
       case "intro":
         advanceIntro();
         break;
       case "name":
-        // Await form submit; no advance here.
         break;
       case "dialogue":
-        // Choices required; no advance on empty click.
         break;
       case "randomize":
-        // Wait for attune text to finish, then state flips to 'result'
+        // do nothing until typing done, then result
         break;
       case "result":
-        showRandomizeResult();
+        showResult();
         break;
       case "exit":
-        exitToMain();
-        break;
-      default:
+        exitScene();
         break;
     }
   }
 
   window.addEventListener("keydown", (e) => {
     if (e.code === "Space") {
-      if (isInputActive()) return;
+      if (elForm.style.display === "flex") return;
       e.preventDefault();
       handleAdvance();
     }
   });
 
   window.addEventListener("click", (e) => {
-    if (e.target.closest(".name-form") || e.target.closest(".choice")) return;
+    if (e.target.closest(".choice") || e.target.closest(".name-form")) return;
     handleAdvance();
   });
 
-  // Prevent space scroll
-  window.onkeydown = (e) => {
-    if (e.code === "Space" && e.target === document.body) e.preventDefault();
-  };
-
-  // ------------------------------
   // Start
-  // ------------------------------
-  startIntro();
+  setHint('Click anywhere or press <span>Space</span> to continue');
+  typeText(introLines[0]);
+  state = "intro";
 })();

@@ -1,7 +1,8 @@
 // awakening/awakening.js
-// Space + optional click advance (like prologue), robust callbacks on instant reveal,
-// constant hint, choices/form block space/click, all three topics required before progress,
-// guaranteed Yuanyuan reveal.
+// Space + optional click advance, constant hint in HTML,
+// choices/form block space/click, must cover all three topics before progress,
+// GUARANTEED: "The Shrine..." line only shows when "What Shrine?" is chosen,
+// and "Who are you?" only reveals name then shows remaining choices.
 
 (() => {
   "use strict";
@@ -32,10 +33,12 @@
   let typeTimer = null;
   let currentFull = "";
   let shown = "";
-  let afterCallback = null; // <-- NEW: run this even if we instant-reveal
+  let afterCallback = null;
   let introIndex = 0;
   let playerName = "";
   let yuanyuanRevealed = false;
+
+  // Topics the player must ask
   const asked = { remember: false, shrine: false, who: false };
 
   const introLines = [
@@ -74,7 +77,6 @@
     clearTimer();
     typing = false;
     elText.textContent = currentFull;
-    // IMPORTANT: also run the pending post-line callback now.
     const cb = afterCallback; afterCallback = null;
     if (cb) cb();
     return true;
@@ -148,12 +150,12 @@
 
       case "shrine":
         asked.shrine = true;
-        afterTopicBranch();
+        explainShrineThenOfferRemaining(); // ONLY here do we print the Shrine explanation
         break;
 
       case "who":
         asked.who = true;
-        revealYuanyuan(afterTopicBranch);
+        revealYuanyuan(offerRemainingChoices); // reveal name, then just show remaining choices
         break;
 
       case "continue":
@@ -162,36 +164,41 @@
     }
   }
 
+  // First branch after "...I don't remember."
   function lineDanger(){
     typeText("\"You don't remember? This place is very dangerous, it's very close to the Shrine, tightly guarded by the Void.\"", ()=>{
-      const opts = [];
-      if (!asked.shrine) opts.push({ text: "\"What Shrine? What's the Void?\"", key: "shrine" });
-      if (!asked.who)    opts.push({ text: "\"Who are you?\"", key: "who" });
-      setChoices(opts);
+      offerRemainingChoices(); // NO shrine explanation yet; user must click the Shrine question
     });
   }
 
-  function afterTopicBranch(){
+  // Shows ONLY the remaining question buttons (no NPC line)
+  function offerRemainingChoices(){
     if (allCovered()){ readyToLeave(); return; }
+    const opts = [];
+    if (!asked.shrine) opts.push({ text: "\"What Shrine? What's the Void?\"", key: "shrine" });
+    if (!asked.who)    opts.push({ text: "\"Who are you?\"", key: "who" });
+    setChoices(opts);
+  }
+
+  // Prints the Shrine explanation line, then offers remaining choices
+  function explainShrineThenOfferRemaining(){
     typeText("\"The Shrine is where the Void gathers strength. We shouldn't stay—this path isn't safe.\"", ()=>{
-      const opts = [];
-      if (!asked.who)    opts.push({ text: "\"Who are you?\"", key: "who" });
-      if (!asked.shrine) opts.push({ text: "\"What Shrine? What's the Void?\"", key: "shrine" });
-      if (opts.length === 0) opts.push({ text: "\"Let's go.\"", key: "continue" });
-      setChoices(opts);
+      offerRemainingChoices();
     });
   }
 
   function revealYuanyuan(cb){
     yuanyuanRevealed = true;
-    typeText("\"...Oh—right. I haven't introduced myself. They call me Yuanyuan... 源緣.\"", ()=>{ if (cb) cb(); });
+    typeText("\"...Oh—right. I haven't introduced myself. They call me Yuanyuan... 源緣.\"", ()=>{
+      if (cb) cb();
+    });
   }
 
   function allCovered(){ return asked.remember && asked.shrine && asked.who; }
 
   function readyToLeave(){
     if (!yuanyuanRevealed){
-      revealYuanyuan(()=> lineOfferHelp());
+      revealYuanyuan(lineOfferHelp);
     } else {
       lineOfferHelp();
     }
@@ -204,7 +211,7 @@
   }
 
   function proceedIfAllCovered(){
-    if (!allCovered()){ afterTopicBranch(); return; }
+    if (!allCovered()){ offerRemainingChoices(); return; }
     elChoices.innerHTML = "";
     beginAttuneLead();
   }
@@ -214,7 +221,6 @@
     state = "attuneLead";
     typeText("\"Your Qi is still forming. Let me attune you to the flow of Lingjie...\"\n\n(Resonance stirring...)", ()=>{
       state = "result";
-      // Space/click will move to showResult
     });
   }
 
@@ -234,8 +240,8 @@
 
   // ---------- Input (Space + guarded click) ----------
   function canAdvanceByKeyOrClick(){
-    if (isFormOpen()) return false;           // must submit form
-    if (choicesVisible() && state==="dialogue") return false; // must click a choice
+    if (isFormOpen()) return false;                 // must submit form
+    if (choicesVisible() && state==="dialogue") return false; // must click a button
     return true;
   }
 
@@ -248,20 +254,19 @@
     lastKey = now;
 
     if (!canAdvanceByKeyOrClick()) return;
-
     if (instantReveal()) return;
 
     switch(state){
       case "intro":       advanceIntro(); break;
       case "name":        /* do nothing */ break;
       case "dialogue":    /* choices only */ break;
-      case "attuneLead":  /* wait for typing; when done state becomes 'result' */ break;
+      case "attuneLead":  /* wait for typing to end; then state='result' */ break;
       case "result":      showResult(); break;
       case "exit":        exitScene(); break;
     }
   });
 
-  // Click (for consistency with prologue): ignored when form/choices visible
+  // Click (like prologue). Ignored when form/choices visible.
   window.addEventListener("click", (e)=>{
     if (e.target.closest(".name-form") || e.target.closest(".choice")) return;
     if (!canAdvanceByKeyOrClick()) return;

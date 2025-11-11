@@ -24,34 +24,25 @@ body{
   user-select:none;
 }
 
-/* Tree (spawn) */
-#tree{
-  position:absolute; left:50%; top:52%;
-  transform: translate(-50%, -50%);
-  width:180px; height:180px; border-radius:50%;
-  background: radial-gradient(circle at 40% 35%, #355d3b, #1e3b23 60%, #0f2515);
-  box-shadow: 0 30px 80px rgba(0,0,0,.5);
+/* Dim dark road feel */
+#darken{
+  position:absolute; inset:0;
+  background: radial-gradient(1200px 800px at 50% 90%, rgba(0,0,0,.35), rgba(0,0,0,.65));
+  pointer-events:none;
 }
 
-/* Quest marker */
-#marker{
-  position:absolute; left:50%; top:22%;
-  transform: translate(-50%, -50%);
-  width:40px; height:40px; border-radius:50%;
-  border:2px solid rgba(255,255,255,.5);
-  box-shadow: 0 0 30px rgba(154,214,255,.35), inset 0 0 12px rgba(154,214,255,.25);
-}
-.pulse{ animation:pulse 1.6s ease-in-out infinite }
-@keyframes pulse{
-  0%,100%{ transform: translate(-50%, -50%) scale(1) }
-  50%{ transform: translate(-50%, -50%) scale(1.15) }
+/* Tree (spawn landmark) */
+#tree{
+  position:absolute; left:12%; top:65%;
+  width:200px; height:200px; border-radius:50%;
+  background: radial-gradient(circle at 40% 35%, #355d3b, #1e3b23 60%, #0f2515);
+  filter: drop-shadow(0 30px 80px rgba(0,0,0,.55));
 }
 
 /* Player */
 #player{
-  position:absolute; left:50%; top:58%;
-  transform: translate(-50%, -50%);
-  width:24px; height:24px;
+  position:absolute; left:16%; top:72%;
+  width:24px; height:24px; transform: translate(-50%, -50%);
 }
 #player .body{
   width:100%; height:100%; border-radius:50%;
@@ -63,39 +54,41 @@ body{
   width:26px; height:6px; border-radius:50%; background: rgba(0,0,0,.35); filter: blur(2px);
 }
 
-/* Enemy */
-#enemy{
-  position:absolute; left:50%; top:18%;
-  transform: translate(-50%, -50%);
-  width:24px; height:24px;
+/* Quest marker */
+#marker{
+  position:absolute; right:8%; top:35%;
+  width:44px; height:44px; border-radius:50%;
+  border:2px solid rgba(154,214,255,.8);
+  box-shadow: 0 0 40px rgba(154,214,255,.4), inset 0 0 12px rgba(154,214,255,.25);
 }
-#enemy .dot{
-  width:100%; height:100%; border-radius:50%; background:#0c0c0c;
-  box-shadow: 0 0 16px rgba(0,0,0,.6);
+.pulse{ animation:pulse 1.6s ease-in-out infinite }
+@keyframes pulse{
+  0%,100%{ transform: scale(1) }
+  50%{ transform: scale(1.15) }
 }
-#enemy .label{
-  position:absolute; left:50%; top:-22px; transform: translate(-50%,-50%);
-  padding:4px 8px; border-radius:12px; font-size:12px;
-  color:#0b0b0b; background:#e9e7e1; white-space:nowrap;
-  box-shadow: 0 6px 16px rgba(0,0,0,.2);
-}
-.hidden{ display:none }
 
-/* UI */
+/* HUD */
 #ui{
-  position:absolute; left:0; right:0; bottom:0; padding:16px;
-  display:flex; justify-content:space-between; align-items:flex-end;
+  position:absolute; left:0; right:0; top:0; padding:14px 16px;
+  display:flex; justify-content:space-between; align-items:flex-start; gap:12px;
 }
-#hint{
-  color:var(--muted); font-size:14px;
-}
-#dialogue{
-  margin-left:auto; max-width:min(60ch, 48vw);
+#hint{ color:var(--muted); font-size:14px }
+#distance{ color:var(--muted); font-size:14px }
+#distance b{ color:#e7e4dc }
+
+/* Dialogue panel */
+.panel{
+  position:absolute; left:50%; bottom:16px; transform: translateX(-50%);
+  width:min(820px, 92vw);
   background: linear-gradient(180deg, var(--panel), rgba(12,12,12,.25));
-  border:1px solid var(--border); border-radius:14px;
+  border:1px solid var(--border); border-radius:16px; padding:12px 14px;
   backdrop-filter: blur(6px);
-  padding:12px 14px; text-align:left;
 }
-#dialogue #text{ min-height:64px; line-height:1.6 }
-#dialogue #advance{ text-align:right; color:var(--muted); font-size:12px }
-#dialogue #advance span{ color:var(--accent) }
+#text{ min-height:84px; line-height:1.6 }
+#advance{ text-align:right; color:var(--muted); font-size:12px }
+#advance span{ color:var(--accent) }
+
+/* Make the world large enough to “walk” */
+body, #field{
+  background-size: cover;
+}

@@ -54,17 +54,11 @@ body{
   width:26px; height:6px; border-radius:50%; background: rgba(0,0,0,.35); filter: blur(2px);
 }
 
-/* Quest marker */
+/* Quest marker (invisible target) */
 #marker{
   position:absolute; right:8%; top:35%;
   width:44px; height:44px; border-radius:50%;
-  border:2px solid rgba(154,214,255,.8);
-  box-shadow: 0 0 40px rgba(154,214,255,.4), inset 0 0 12px rgba(154,214,255,.25);
-}
-.pulse{ animation:pulse 1.6s ease-in-out infinite }
-@keyframes pulse{
-  0%,100%{ transform: scale(1) }
-  50%{ transform: scale(1.15) }
+  opacity:0; pointer-events:none; /* hidden but active for overlap */
 }
 
 /* HUD */
@@ -73,6 +67,7 @@ body{
   display:flex; justify-content:space-between; align-items:flex-start; gap:12px;
 }
 #hint{ color:var(--muted); font-size:14px }
+#quest{ color:#e9e7e1; font-size:14px; margin-top:6px }
 #distance{ color:var(--muted); font-size:14px }
 #distance b{ color:#e7e4dc }
 
@@ -87,8 +82,3 @@ body{
 #text{ min-height:84px; line-height:1.6 }
 #advance{ text-align:right; color:var(--muted); font-size:12px }
 #advance span{ color:var(--accent) }
-
-/* Make the world large enough to “walk” */
-body, #field{
-  background-size: cover;
-}

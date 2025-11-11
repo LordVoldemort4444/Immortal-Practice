@@ -1,30 +1,25 @@
-// Tutorial: Path of Resonance
-// - WASD movement always enabled
-// - Space (or click) advances typewriter; instant reveal on first press, advance on next
-// - Distance UI updates as you move (visual only)
-// - Redirect to ../index.html ONLY when BOTH conditions are true:
-//     1) Player has finished all tutorial lines
-//     2) Player overlaps the quest marker
+// Tutorial: Path of Resonance (walking + space-advanced dialogue)
+// - Space/click fast-skip preserved (instant reveal → advance smoothly)
+// - Quest instruction shown as text; no visible world marker
+// - First line exactly as specified (no teaser)
+// - Redirect to ../index.html only when: dialogue finished AND player overlaps the (invisible) marker
+
 (() => {
   "use strict";
 
   // ---------- DOM ----------
-  const field = document.getElementById("field");
-  const playerEl = document.getElementById("player");
-  const markerEl = document.getElementById("marker");
+  const playerEl   = document.getElementById("player");
+  const markerEl   = document.getElementById("marker");
   const distanceEl = document.getElementById("distance");
   const dialogueEl = document.getElementById("dialogue");
-  const textEl = document.getElementById("text");
-  const fadeEl = document.getElementById("fade");
+  const textEl     = document.getElementById("text");
+  const fadeEl     = document.getElementById("fade");
 
-  // ---------- Saved profile (from Awakening) ----------
-  const ELEMENTS = ["Wood","Fire","Earth","Metal","Water"];
-  const ANIMALS  = ["Wolf","Fox","Bear","Bird","Serpent"];
-  const element  = localStorage.getItem("ip.element") || "Wood";
-  const animal   = localStorage.getItem("ip.animal")  || "Wolf";
-  const playerName = localStorage.getItem("ip.name") || "Traveller";
+  // ---------- Saved profile ----------
+  const element = localStorage.getItem("ip.element") || "Wood";
+  const animal  = localStorage.getItem("ip.animal")  || "Wolf";
 
-  // Five-element strengths/weaknesses
+  // Element chart
   const EREL = {
     Wood:  { strong:"Earth", weak:"Fire"  },
     Fire:  { strong:"Metal", weak:"Earth" },
@@ -45,9 +40,9 @@
   const hiStat     = (animalStat[animal]||{}).hi || "—";
   const loStat     = (animalStat[animal]||{}).lo || "—";
 
-  // ---------- Dialogue content (exact lines you provided) ----------
+  // ---------- Dialogue lines (first line EXACT) ----------
   const L = [
-    `As a spirit (this is a teaser btw, only 0.0001% of people catches this), you really do contain a lot of resonance to this land! You are a ${element} ${animal}.`,
+    `As a spirit before you awaken, you really do contain a lot of resonance to this land! You are a ${element} ${animal}.`,
     `Your elemental type defines your elemental moves.`,
     `Each element is weak to one element, and is also strong to one element.`,
     `This means that you deal more damage to one element, but also loses more health to another element.`,
@@ -67,8 +62,7 @@
     `Stats increase naturally as your character is upgraded.`
   ];
 
-  // ---------- Player + Marker positions ----------
-  // Start player near tree; marker at right-top quadrant (same as CSS positions)
+  // ---------- Positions & movement ----------
   const bounds = { w: window.innerWidth, h: window.innerHeight };
   let pos = { x: bounds.w * 0.16, y: bounds.h * 0.72 };
   const speed = 160; // px/s
@@ -80,57 +74,60 @@
   }
   setPlayerPosition();
 
-  // Read marker absolute center
   function elCenter(el){
     const r = el.getBoundingClientRect();
-    return { x: r.left + r.width/2, y: r.top + r.height/2, w:r.width, h:r.height };
+    return { x: r.left + r.width/2, y: r.top + r.height/2 };
   }
 
-  // Distance display (whole meters)
-  function updateDistance(){
-    const pc = elCenter(playerEl);
-    const mc = elCenter(markerEl);
-    const dx = mc.x - pc.x;
-    const dy = mc.y - pc.y;
-    const d  = Math.hypot(dx, dy);
-    const meters = Math.max(0, Math.round(d)); // 1px ~ 1m visual
-    distanceEl.innerHTML = `Distance to destination: <b>${meters} m</b>`;
-  }
-  updateDistance();
-
-  // Overlap detection (AABB hitbox)
   function isOverlap(aEl, bEl){
     const a = aEl.getBoundingClientRect();
     const b = bEl.getBoundingClientRect();
     return (a.left <= b.right && a.right >= b.left && a.top <= b.bottom && a.bottom >= b.top);
   }
 
-  // ---------- Typewriter with deferred callbacks ----------
-  let typing=false, t=null, full="", shown="", pending=null;
-  let idx = 0; // current dialogue index
+  // Distance (visual only)
+  function updateDistance(){
+    const pc = elCenter(playerEl);
+    const mc = elCenter(markerEl);
+    const d  = Math.hypot(mc.x - pc.x, mc.y - pc.y);
+    distanceEl.innerHTML = `Distance to destination: <b>${Math.max(0, Math.round(d))} m</b>`;
+  }
+  updateDistance();
+
+  // ---------- Typewriter with fast-skip ----------
+  let typing=false, t=null, full="", shown="", pending=null, idx=0;
+
   function typeLine(s, cb){
-    clearTimeout(t); typing=true; full=s; shown=""; pending=(typeof cb==="function")?cb:null;
+    clearTimeout(t);
+    typing=true; full=s; shown=""; pending=(typeof cb==="function")?cb:null;
     textEl.textContent=""; let i=0;
     (function step(){
-      if(i>=s.length){ typing=false; if(!pending)return; const k=pending; pending=null; k(); return; }
-      shown += s[i++]; textEl.textContent = shown; t=setTimeout(step, 22);
+      if(i>=s.length){ typing=false; return; } // pending runs on user press
+      shown += s[i++]; textEl.textContent = shown;
+      t=setTimeout(step, 18);
     })();
   }
-  function instantReveal(){ if(!typing) return false; clearTimeout(t); typing=false; textEl.textContent = full; return true; }
-  function runPending(){ if(!pending) return false; const k=pending; pending=null; k(); return true; }
 
-  function showCurrent(){
-    typeLine(L[idx], ()=>{/* wait for next space/click to advance */});
+  // Fast-skip flow:
+  // 1) typing -> reveal
+  // 2) else if pending -> run & immediately advance
+  // 3) else -> advance
+  function onAdvancePress(){
+    if(typing){
+      clearTimeout(t); typing=false; textEl.textContent = full; return;
+    }
+    if(pending){
+      const cb = pending; pending=null; cb();
+      advanceDialogue(); // immediate step
+      return;
+    }
+    advanceDialogue();
   }
 
-  dialogueEl.addEventListener("click", ()=>{
-    // clicks anywhere on panel behave like Space (reveal→advance)
-    if(instantReveal()) return;
-    if(runPending()) return;
-    advanceDialogue();
-  });
+  function showCurrent(){
+    typeLine(L[idx], ()=>{/* stored; executed on press */});
+  }
 
-  // ---------- Flow control ----------
   let reachedMarker = false;
   let dialogueFinished = false;
 
@@ -140,7 +137,6 @@
       showCurrent();
     } else {
       dialogueFinished = true;
-      // if already at marker, finish now
       tryFinish();
     }
   }
@@ -152,35 +148,31 @@
     }
   }
 
-  // ---------- Movement loop ----------
+  // ---------- Loop ----------
   let last = performance.now();
   function loop(now){
     const dt = (now - last)/1000; last = now;
 
-    // Movement always available (dialogue does not block)
     let vx=0, vy=0;
     if(keys.w) vy -= 1;
     if(keys.s) vy += 1;
     if(keys.a) vx -= 1;
-    if(keys.d) vx += 1;
+    if(keys.d) vx += 1; 
     if(vx || vy){
       const inv = 1/Math.hypot(vx||1, vy||1);
       pos.x += vx*speed*inv*dt;
       pos.y += vy*speed*inv*dt;
-      // clamp inside viewport with small margins
       pos.x = Math.max(12, Math.min(bounds.w-12, pos.x));
       pos.y = Math.max(12, Math.min(bounds.h-12, pos.y));
       setPlayerPosition();
     }
 
-    // Distance UI
     updateDistance();
 
-    // Overlap check
-    const nowOverlap = isOverlap(playerEl, markerEl);
-    if (nowOverlap && !reachedMarker){
+    const overlap = isOverlap(playerEl, markerEl);
+    if (overlap && !reachedMarker){
       reachedMarker = true;
-      tryFinish(); // only redirects if dialogue already finished
+      tryFinish();
     }
 
     requestAnimationFrame(loop);
@@ -197,10 +189,7 @@
     if(e.code==="KeyD") keys.d = true;
 
     if(e.code==="Space"){
-      // Reveal first, then run pending, then advance dialogue
-      if(instantReveal()) return;
-      if(runPending()) return;
-      advanceDialogue();
+      onAdvancePress();
     }
   });
 
@@ -211,7 +200,9 @@
     if(e.code==="KeyD") keys.d = false;
   });
 
+  // Clicking the dialogue panel acts like Space
+  dialogueEl.addEventListener("click", onAdvancePress);
+
   // ---------- Start ----------
-  // Show first line immediately
   showCurrent();
 })();

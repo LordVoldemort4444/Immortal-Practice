@@ -1,94 +1,217 @@
-:root{
-  --fg:#ece9e2; --muted:#b9b6af; --accent:#9ad6ff;
-  --bg1:#0b1416; --bg2:#111a14;
-  --panel:rgba(10,10,10,.45); --border:rgba(255,255,255,.08);
-}
+// Tutorial: Path of Resonance
+// - WASD movement always enabled
+// - Space (or click) advances typewriter; instant reveal on first press, advance on next
+// - Distance UI updates as you move (visual only)
+// - Redirect to ../index.html ONLY when BOTH conditions are true:
+//     1) Player has finished all tutorial lines
+//     2) Player overlaps the quest marker
+(() => {
+  "use strict";
 
-*{box-sizing:border-box}
-html,body{height:100%}
-body{
-  margin:0; font-family:"Noto Serif",serif; color:var(--fg);
-  background: radial-gradient(1200px 800px at 50% 10%, var(--bg2), var(--bg1));
-  overflow:hidden;
-}
+  // ---------- DOM ----------
+  const field = document.getElementById("field");
+  const playerEl = document.getElementById("player");
+  const markerEl = document.getElementById("marker");
+  const distanceEl = document.getElementById("distance");
+  const dialogueEl = document.getElementById("dialogue");
+  const textEl = document.getElementById("text");
+  const fadeEl = document.getElementById("fade");
 
-#fade{
-  position:fixed; inset:0; background:#000; opacity:1; pointer-events:none;
-  animation: fadeIn .6s ease forwards;
-}
-@keyframes fadeIn{ to{ opacity:0 } }
-@keyframes fadeOut{ to{ opacity:1 } }
+  // ---------- Saved profile (from Awakening) ----------
+  const ELEMENTS = ["Wood","Fire","Earth","Metal","Water"];
+  const ANIMALS  = ["Wolf","Fox","Bear","Bird","Serpent"];
+  const element  = localStorage.getItem("ip.element") || "Wood";
+  const animal   = localStorage.getItem("ip.animal")  || "Wolf";
+  const playerName = localStorage.getItem("ip.name") || "Traveller";
 
-#field{
-  position:relative; width:100vw; height:100vh;
-  user-select:none;
-}
+  // Five-element strengths/weaknesses
+  const EREL = {
+    Wood:  { strong:"Earth", weak:"Fire"  },
+    Fire:  { strong:"Metal", weak:"Earth" },
+    Earth: { strong:"Water", weak:"Metal" },
+    Metal: { strong:"Wood",  weak:"Water" },
+    Water: { strong:"Fire",  weak:"Wood"  }
+  };
+  const animalStat = {
+    Wolf:    { hi:"Attack",    lo:"Resonance" },
+    Fox:     { hi:"Speed",     lo:"Defense"   },
+    Bear:    { hi:"HP",        lo:"Speed"     },
+    Bird:    { hi:"Resonance", lo:"HP"        },
+    Serpent: { hi:"Defense",   lo:"Attack"    },
+  };
 
-/* Dim dark road feel */
-#darken{
-  position:absolute; inset:0;
-  background: radial-gradient(1200px 800px at 50% 90%, rgba(0,0,0,.35), rgba(0,0,0,.65));
-  pointer-events:none;
-}
+  const elemStrong = EREL[element]?.strong || "—";
+  const elemWeak   = EREL[element]?.weak   || "—";
+  const hiStat     = (animalStat[animal]||{}).hi || "—";
+  const loStat     = (animalStat[animal]||{}).lo || "—";
 
-/* Tree (spawn landmark) */
-#tree{
-  position:absolute; left:12%; top:65%;
-  width:200px; height:200px; border-radius:50%;
-  background: radial-gradient(circle at 40% 35%, #355d3b, #1e3b23 60%, #0f2515);
-  filter: drop-shadow(0 30px 80px rgba(0,0,0,.55));
-}
+  // ---------- Dialogue content (exact lines you provided) ----------
+  const L = [
+    `As a spirit (this is a teaser btw, only 0.0001% of people catches this), you really do contain a lot of resonance to this land! You are a ${element} ${animal}.`,
+    `Your elemental type defines your elemental moves.`,
+    `Each element is weak to one element, and is also strong to one element.`,
+    `This means that you deal more damage to one element, but also loses more health to another element.`,
+    `You can refer to the chart after the tutorial to know more about elemental resonance.`,
+    `Your animal type defines your animalistic moves.`,
+    `Each animal has an advantageous stat and a disadvantageous stat.`,
+    `This means that one specific stat has a higher base stat than other animals, and another specific stat has a lower base stat than other animals.`,
+    `You can refer to the table after the tutorial to know more about animal types.`,
+    `You have a ${element} type. This means you are weak to ${elemWeak}, and strong against ${elemStrong}.`,
+    `You are a ${animal}. This means you have a higher ${hiStat}, and lower ${loStat}.`,
+    `Take a look at your current stats.`,
+    `HP refers to the amount of hitpoints you have. You will faint and teleport to the nearest portal if you lose all HP.`,
+    `Attack affects how much damage you deal.`,
+    `Defense affects how much damage you receive.`,
+    `Speed affects how fast you attack and defend.`,
+    `Resonance affects the Qi and your elemental reactions.`,
+    `Stats increase naturally as your character is upgraded.`
+  ];
 
-/* Player */
-#player{
-  position:absolute; left:16%; top:72%;
-  width:24px; height:24px; transform: translate(-50%, -50%);
-}
-#player .body{
-  width:100%; height:100%; border-radius:50%;
-  background: radial-gradient(circle at 35% 30%, #e7fbff, #bfe9ff 60%, #7ec7ff);
-  box-shadow: 0 0 18px rgba(126,199,255,.6);
-}
-#player .shadow{
-  position:absolute; left:50%; bottom:-8px; transform: translateX(-50%);
-  width:26px; height:6px; border-radius:50%; background: rgba(0,0,0,.35); filter: blur(2px);
-}
+  // ---------- Player + Marker positions ----------
+  // Start player near tree; marker at right-top quadrant (same as CSS positions)
+  const bounds = { w: window.innerWidth, h: window.innerHeight };
+  let pos = { x: bounds.w * 0.16, y: bounds.h * 0.72 };
+  const speed = 160; // px/s
+  let keys = { w:false, a:false, s:false, d:false };
 
-/* Quest marker */
-#marker{
-  position:absolute; right:8%; top:35%;
-  width:44px; height:44px; border-radius:50%;
-  border:2px solid rgba(154,214,255,.8);
-  box-shadow: 0 0 40px rgba(154,214,255,.4), inset 0 0 12px rgba(154,214,255,.25);
-}
-.pulse{ animation:pulse 1.6s ease-in-out infinite }
-@keyframes pulse{
-  0%,100%{ transform: scale(1) }
-  50%{ transform: scale(1.15) }
-}
+  function setPlayerPosition(){
+    playerEl.style.left = `${pos.x}px`;
+    playerEl.style.top  = `${pos.y}px`;
+  }
+  setPlayerPosition();
 
-/* HUD */
-#ui{
-  position:absolute; left:0; right:0; top:0; padding:14px 16px;
-  display:flex; justify-content:space-between; align-items:flex-start; gap:12px;
-}
-#hint{ color:var(--muted); font-size:14px }
-#distance{ color:var(--muted); font-size:14px }
-#distance b{ color:#e7e4dc }
+  // Read marker absolute center
+  function elCenter(el){
+    const r = el.getBoundingClientRect();
+    return { x: r.left + r.width/2, y: r.top + r.height/2, w:r.width, h:r.height };
+  }
 
-/* Dialogue panel */
-.panel{
-  position:absolute; left:50%; bottom:16px; transform: translateX(-50%);
-  width:min(820px, 92vw);
-  background: linear-gradient(180deg, var(--panel), rgba(12,12,12,.25));
-  border:1px solid var(--border); border-radius:16px; padding:12px 14px;
-  backdrop-filter: blur(6px);
-}
-#text{ min-height:84px; line-height:1.6 }
-#advance{ text-align:right; color:var(--muted); font-size:12px }
-#advance span{ color:var(--accent) }
+  // Distance display (whole meters)
+  function updateDistance(){
+    const pc = elCenter(playerEl);
+    const mc = elCenter(markerEl);
+    const dx = mc.x - pc.x;
+    const dy = mc.y - pc.y;
+    const d  = Math.hypot(dx, dy);
+    const meters = Math.max(0, Math.round(d)); // 1px ~ 1m visual
+    distanceEl.innerHTML = `Distance to destination: <b>${meters} m</b>`;
+  }
+  updateDistance();
 
-/* Make the world large enough to “walk” */
-body, #field{
-  background-size: cover;
-}
+  // Overlap detection (AABB hitbox)
+  function isOverlap(aEl, bEl){
+    const a = aEl.getBoundingClientRect();
+    const b = bEl.getBoundingClientRect();
+    return (a.left <= b.right && a.right >= b.left && a.top <= b.bottom && a.bottom >= b.top);
+  }
+
+  // ---------- Typewriter with deferred callbacks ----------
+  let typing=false, t=null, full="", shown="", pending=null;
+  let idx = 0; // current dialogue index
+  function typeLine(s, cb){
+    clearTimeout(t); typing=true; full=s; shown=""; pending=(typeof cb==="function")?cb:null;
+    textEl.textContent=""; let i=0;
+    (function step(){
+      if(i>=s.length){ typing=false; if(!pending)return; const k=pending; pending=null; k(); return; }
+      shown += s[i++]; textEl.textContent = shown; t=setTimeout(step, 22);
+    })();
+  }
+  function instantReveal(){ if(!typing) return false; clearTimeout(t); typing=false; textEl.textContent = full; return true; }
+  function runPending(){ if(!pending) return false; const k=pending; pending=null; k(); return true; }
+
+  function showCurrent(){
+    typeLine(L[idx], ()=>{/* wait for next space/click to advance */});
+  }
+
+  dialogueEl.addEventListener("click", ()=>{
+    // clicks anywhere on panel behave like Space (reveal→advance)
+    if(instantReveal()) return;
+    if(runPending()) return;
+    advanceDialogue();
+  });
+
+  // ---------- Flow control ----------
+  let reachedMarker = false;
+  let dialogueFinished = false;
+
+  function advanceDialogue(){
+    if (idx < L.length - 1){
+      idx++;
+      showCurrent();
+    } else {
+      dialogueFinished = true;
+      // if already at marker, finish now
+      tryFinish();
+    }
+  }
+
+  function tryFinish(){
+    if (reachedMarker && dialogueFinished){
+      fadeEl.style.animation = "fadeOut .5s ease forwards";
+      setTimeout(()=>{ window.location.href = "../index.html"; }, 520);
+    }
+  }
+
+  // ---------- Movement loop ----------
+  let last = performance.now();
+  function loop(now){
+    const dt = (now - last)/1000; last = now;
+
+    // Movement always available (dialogue does not block)
+    let vx=0, vy=0;
+    if(keys.w) vy -= 1;
+    if(keys.s) vy += 1;
+    if(keys.a) vx -= 1;
+    if(keys.d) vx += 1;
+    if(vx || vy){
+      const inv = 1/Math.hypot(vx||1, vy||1);
+      pos.x += vx*speed*inv*dt;
+      pos.y += vy*speed*inv*dt;
+      // clamp inside viewport with small margins
+      pos.x = Math.max(12, Math.min(bounds.w-12, pos.x));
+      pos.y = Math.max(12, Math.min(bounds.h-12, pos.y));
+      setPlayerPosition();
+    }
+
+    // Distance UI
+    updateDistance();
+
+    // Overlap check
+    const nowOverlap = isOverlap(playerEl, markerEl);
+    if (nowOverlap && !reachedMarker){
+      reachedMarker = true;
+      tryFinish(); // only redirects if dialogue already finished
+    }
+
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // ---------- Inputs ----------
+  window.addEventListener("keydown",(e)=>{
+    if(e.repeat) return;
+
+    if(e.code==="KeyW") keys.w = true;
+    if(e.code==="KeyA") keys.a = true;
+    if(e.code==="KeyS") keys.s = true;
+    if(e.code==="KeyD") keys.d = true;
+
+    if(e.code==="Space"){
+      // Reveal first, then run pending, then advance dialogue
+      if(instantReveal()) return;
+      if(runPending()) return;
+      advanceDialogue();
+    }
+  });
+
+  window.addEventListener("keyup",(e)=>{
+    if(e.code==="KeyW") keys.w = false;
+    if(e.code==="KeyA") keys.a = false;
+    if(e.code==="KeyS") keys.s = false;
+    if(e.code==="KeyD") keys.d = false;
+  });
+
+  // ---------- Start ----------
+  // Show first line immediately
+  showCurrent();
+})();
